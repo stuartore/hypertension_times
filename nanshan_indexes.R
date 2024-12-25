@@ -1,3 +1,10 @@
+# BMI
+BMI <- function(weight_kg, height_cm){
+  height_m = height_cm / 100
+  BMI_value <- weight_kg / (height_m^2)
+  return(BMI_value)
+}
+
 # 体圆度指数(BRI)计算
 BRI <- function(WC_cm, H_cm) {
   # 将腰围和身高从厘米转换为米
@@ -57,6 +64,10 @@ C_Index <- function(waist_cm, weight_kg, height_cm) {
 
 # 葡萄糖处置率eGDR
 eGDR <- function(waist_cm, hpts, hbalc) {
+  waist_cm <- as.numeric(waist_cm)
+  hbalc <- as.numeric(hbalc)
+  hbalc <- as.numeric(hbalc)
+  
   # 校正hpts: Have - 1, Not have - 0
   hpts <- ifelse(as.numeric(hpts) == 1, 1,
                  ifelse(as.numeric(hpts) == 2, 0, NA))
@@ -183,6 +194,25 @@ EKFC_eGFRcys <- function(cystatin_mg_dl, age, gender = NULL) {
   
   return(EKFC_eGFRcys)
 }
+
+# 针对中国人群的改良MDRD公式
+MDRD_eGFR <- function(scr_mg_dl, gender, age) {
+  # scr_mg_dl = scr_umol_l / 88.4
+
+  # Gender: 
+  # 1 Male
+  # 2 Female
+
+  scr_umol_l <- 88.4 * scr_mg_dl
+  
+  # 应用MDRD公式计算eGFR
+  scale_num <- ifelse(gender == 2, 0.79, 1)
+  MDRD_eGFR_value <- 175 * (scr_umol_l * 0.011)^(-1.234) * age^(-0.179) * scale_num
+  
+  # 返回计算结果
+  return(MDRD_eGFR_value)
+}
+
 # eGFR : CKD-EPI公式（包括黑人）
 
 # PHR指数
@@ -194,6 +224,11 @@ PHR <- function(bl_plt, bl_hdl) {
 
 # 胰岛素抵抗代谢评分（Metabolic Score for Insulin Resistance，METS-IR）
 METS_IR <- function(bl_glu_mg_dl, bl_tg, weight_kg, height_cm, bl_hdl) {
+  bl_glu_mg_dl <- as.numeric(bl_glu_mg_dl)
+  weight_kg <- as.numeric(weight_kg)
+  height_cm <- as.numeric(height_cm)
+  bl_hdl <- as.numeric(bl_hdl)
+
   # 将身高从厘米转换为米
   height_m <- height_cm / 100
 
@@ -213,6 +248,21 @@ METS_IR <- function(bl_glu_mg_dl, bl_tg, weight_kg, height_cm, bl_hdl) {
   return(METS_IR_value)
 }
 
+NHHR <- function(bl_total_cho, bl_hdl){
+  NHHR_value <- (bl_total_cho - bl_hdl) / bl_hdl
+  return(NHHR_value)
+}
+
+NLR <- function(bl_neu, bl_lym){
+  NLR_value <- bl_neu / bl_lym
+  return(NLR_value)
+}
+
+NHR <- function(bl_neu, bl_hdl){
+  NHR_value <- bl_neu / bl_hdl
+  return(NHR_value)
+}
+
 # 血浆动脉粥样硬化指数（AIP）
 AIP <- function(bl_tg, bl_hdl) {
   # 计算TG与HDL-C的比值
@@ -224,10 +274,35 @@ AIP <- function(bl_tg, bl_hdl) {
   return(AIP)
 }
 
+# DCS - 皮质醇斜率
+DCS <- function(bl_cort_8clock, bl_cort_24clock){
+  DCS_value <- (bl_cort_8clock - bl_cort_24clock) / 16
+  return(DCS_value)
+}
+
 # UHR指数
 UHR <- function(bl_ua, bl_hdl){
   UHR_value <- bl_ua / bl_hdl
   return(UHR_value)
+}
+
+# ALI - 晚期肺癌炎症指数
+ALI <- function(weight_kg, height_cm, bl_alb_g_l, bl_neu, bl_lym){
+  # ALI =（BMI × Alb）/NLR
+  BMI_value <- BMI(weight_kg, height_cm)
+  bl_alb_g_dl <- bl_alb_g_l / 100
+  NLR_value <- NLR(bl_neu, bl_lym)
+  ALI_value <- (BMI_value * bl_alb_g_dl) / NLR_value
+  return(ALI_value)
+}
+
+# 红细胞分布宽度与白蛋白比率
+RAR_index <- function(bl_rdw, bl_alb_g_l){
+  bl_rdw <- as.numeric(bl_rdw)
+  bl_alb_g_l <- as.numeric(bl_alb_g_l)
+  bl_alb_g_dl <- bl_alb_g_l / 100
+  rar_inedex_value <- bl_rdw / bl_alb_g_dl
+  return(rar_inedex_value)
 }
 
 ## CHARLS 2015 数据
