@@ -1,8 +1,17 @@
 # BMI
 BMI <- function(weight_kg, height_cm){
+  weight_kg <- as.numeric(weight_kg)
+  height_cm <- as.numeric(height_cm)
   height_m = height_cm / 100
   BMI_value <- weight_kg / (height_m^2)
   return(BMI_value)
+}
+
+BSA <- function(weight_kg, height_cm) {
+  weight_kg <- as.numeric(weight_kg)
+  height_cm <- as.numeric(height_cm)
+  BSA_value <- round(sqrt(height_cm * weight_kg / 3600), 3)
+  return(BSA_value)
 }
 
 # 体圆度指数(BRI)计算
@@ -111,6 +120,15 @@ SII <- function(Neutrocyte, Platelet, Lymphocyte) {
   return(result)
 }
 
+# 残余胆固醇
+RC <- function(bl_tg, bl_hdl, bl_ldl){
+  bl_tg <- as.numeric(bl_tg)
+  bl_hdl <- as.numeric(bl_hdl)
+  bl_ldl <- as.numeric(bl_ldl)
+  RC_value <- bl_tg - bl_hdl - bl_ldl
+  return(RC_value)
+}
+
 # 计算心脏代谢指数CMI ，发过frontiers
 CMI <- function(bl_tg, bl_hdl, WC_cm, height_cm) {
   # 计算腰高比 WHtR
@@ -121,7 +139,6 @@ CMI <- function(bl_tg, bl_hdl, WC_cm, height_cm) {
   
   return(CMI_value)
 }
-
 
 # eGFR估算，公式参考https://pubmed.ncbi.nlm.nih.gov/36720134/ IF = 96.2
 # EKFC eGFRcys 方程无偏见，在白人患者和黑人患者（欧洲 11231 名患者、美国 1093 名患者和非洲 508 名患者）中的准确性与 EKFC eGFRcr 方程相似，

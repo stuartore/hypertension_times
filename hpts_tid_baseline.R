@@ -62,6 +62,7 @@ data$PHR <- PHR(data$`血小板计数`, data$`高密度脂蛋白胆固醇`)
 data$METS_IR <- METS_IR(data$`葡萄糖_mg_dl`, data$`总胆固醇`, data$`体重`, data$`身高`, data$`高密度脂蛋白胆固醇`)
 data$AIP <- AIP(data$`总胆固醇`, data$`高密度脂蛋白胆固醇`)
 data$SII <- SII(data$`中性粒细胞绝对值`, data$`血小板计数`, data$`淋巴细胞绝对值`)
+data$RC <- RC(data$`总胆固醇`, data$`高密度脂蛋白胆固醇`, data$`低密度脂蛋白胆固醇`)
 data$UHR <- UHR(data$`总胆固醇`, data$`高密度脂蛋白胆固醇`)
 data$NLR <- NLR(data$`中性粒细胞绝对值`, data$`淋巴细胞绝对值`)
 data$NHR <- NHR(data$`中性粒细胞绝对值`, data$`高密度脂蛋白胆固醇`)
@@ -101,9 +102,9 @@ data <- data %>%
     # LVMI 男大于115，女大于95，默认大于95
     `心脏靶器官损害` = ifelse(
       `性别` == 1,
-      ifelse(LVMI >= 109, 1, 0),
+      ifelse(LVMI >= 115, 1, 0),
       # 默认NA和女大于95为1
-      ifelse(LVMI >= 105, 1, 0)
+      ifelse(LVMI >= 95, 1, 0)
     )
   )
 
@@ -145,13 +146,13 @@ other_list <- c("尿微量白蛋白", "肌酐(尿)", "尿微量白蛋白/肌酐�
 indexes_list <- c(
   #"BMI", "BRI",
   "LVMI", "HGI","PHR", 
-  "SII",
-  "NLR", "NHR", "NHHR", "ALI",
+  "SII", "RC",
+  "NLR", "NHR", "NHHR", 
+  #"ALI", "RAR_index",  # 太多NA
   #"METS_IR", 
   "AIP",
   "DCS",
-  "UHR",
-  "RAR_index"
+  "UHR"
 )
 
 # 获取LVMI的四分位数切点
@@ -216,60 +217,6 @@ tableone_dcs <- descrTable(
     sd.type = 3, hide.no = "no", include.label = FALSE
 )
 
-stop()
-# 整理数据
-tableone_data <- tableone_data %>%
-  mutate(
-    `性别` = case_when(
-      `性别` == "男" ~ 1,
-      `性别` == "女" ~ 2,
-      True ~ NA_integer_
-    )
-  )
-tableone_data <- na.omit(tableone_data[1:20])
-
-# 机器学习XGBoost
-# 分成建模和验证组
-set.seed(1234)
-inTrain <- sample(nrow(tableone_data), 0.7*nrow(tableone_data))
-tableone_data_train <- tableone_data[inTrain,]#70%数据集
-tableone_data_test<- tableone_data[-inTrain,]#30%数据集
-
-### 生成模型
-# 向量机模型
-#svm  <- svm(`是否诊断PA` ~ . ,data=tableone_data.scale, probability = TRUE)
-
-# XGboost模型
-model_xgboost = xgboost(
-  data = as.matrix(tableone_data_train[,c(2:20)]),#训练集的自变量矩阵
-                   label = tableone_data_train$`颈动脉靶器官损害`,
-                   max_depth = 3, 
-                   eta = 1, 
-                   nthread = 2, 
-                   nrounds = 10,
-                   objective = "binary:logistic")
-
-# 预测
-#pred_svm <- predict(svm, tableone_data.scale, type = "prob")
-pred_xgboost <- predict(model_xgboost, as.matrix(tableone_data_test[,c(2:20)]), type = "prob")
-
-# 绘制ROC曲线
-roc_obj <- roc(response = tableone_data_test$`颈动脉靶器官损害`, predictor = pred_xgboost)
-plot(roc_obj, main = "ROC Curve 颈动脉靶器官损害 Predict for XGBoost Model")
-abline(a = 0, b = 1, lty = 2, col = "gray")  # 添加对角线
-
-# 计算AUC值
-auc_value <- auc(roc_obj)
-text(x = 0.5, y = 0.25, labels = paste("AUC =", round(auc_value, 4)), cex = 1.2, col = "#0077ff")
-
-# 计算SHAP值
-shap_values <- shap.values(model_xgboost, as.matrix(tableone_data_train[,c(2:20)]))
-
-# To prepare the long-format data:
-shap_long <- shap.prep(xgb_model = model_xgboost, X_train = as.matrix(tableone_data_train[,c(2:20)]),)
-#shap.plot.summary(shap_long)
-
-stop()
 # export2word导出
 #export2word(tableone_tid, "颈动脉内膜基线.docx")
 #export2word(tableone_heart, "心脏靶器官基线.docx")
@@ -289,7 +236,7 @@ library(rms)
 library(ggplot2)
 
 # 删除data数据框中RAR_index列包含NA的行
-data_rcs <- na.omit(data[, c("RAR_index", "颈动脉靶器官损害", "性别", "年龄")])
+data_rcs <- na.omit(data[, c("DCS", "心脏靶器官损害", "性别")])
 
 # 假设你的数据存储在名为data的数据框中，先准备数据分布对象
 dd <- datadist(data_rcs)
@@ -298,7 +245,7 @@ options(datadist = 'dd')
 # 使用rcs()函数创建受限三次样条，这里同样以4个节点为例
 # 拟合逻辑回归模型，以颈动脉靶器官损害为响应变量，RAR_index为自变量且应用受限三次样条变换
 # 同时调整性别、年龄和BMI协变量
-model <- lrm(`颈动脉靶器官损害` ~ rcs(RAR_index, 4) + 性别 + 年龄 , data = data_rcs)
+model <- lrm(`心脏靶器官损害` ~ rcs(DCS, 4) + 性别 , data = data_rcs)
 
 # 检查模型摘要
 summary(model)
@@ -313,17 +260,17 @@ p_overall <- anova_results[1, 3]
 p_nolinear <- anova_results[2, 3]
 
 # 使用Predict()函数预测概率
-pred <- Predict(model, RAR_index, fun = plogis, ref.zero = TRUE)
+pred <- Predict(model, DCS, fun = plogis, ref.zero = TRUE)
 
 # 使用Predict()函数预测优势比
-pred_or <- Predict(model, RAR_index, fun = exp, ref.zero = TRUE)
+pred_or <- Predict(model, DCS, fun = exp, ref.zero = TRUE)
 
 # 使用ggplot2绘制RCS图
 # 预测概率
-gg_predict <- ggplot(data = pred, aes(x = RAR_index, y = pred)) +
+gg_predict <- ggplot(data = pred, aes(x = DCS, y = pred)) +
   geom_line(color = "#fe4d4b") +
   geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#ffb3b3", alpha = 0.8) +
-  labs(title = "RCS for RAR_index and Heart Target Damage", x = "RAR_index", y = "Predicted Probability") +
+  labs(title = "RCS for DCS and Heart Target Damage", x = "DCS", y = "Predicted Probability") +
   theme_minimal() + 
     annotate("text", x = 81, y = 0.9, 
       label = paste("p.overall=", round(p_overall, 4)), 
@@ -335,11 +282,11 @@ gg_predict <- ggplot(data = pred, aes(x = RAR_index, y = pred)) +
 print(gg_predict)
 
 # 包含OR值的RCS图
-gg_or <- ggplot(data = pred_or, aes(x = RAR_index, y = pred)) +
+gg_or <- ggplot(data = pred_or, aes(x = DCS, y = pred)) +
   geom_line(color = "#fe4d4b") +
   geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#ffb3b3", alpha = 0.8) +
-  labs(title = "RCS for RAR_index and Heart Target Damage", 
-       x = "RAR_index", 
+  labs(title = "RCS for DCS and Heart Target Damage", 
+       x = "DCS", 
        y = "Odds Ratio") +
   theme_minimal() + 
   annotate("text", x = 0.2, y = 19, 
