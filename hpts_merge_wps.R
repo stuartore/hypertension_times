@@ -34,7 +34,27 @@ data3 <- full_join(data1, data2, by = common_col_data1_2)
 common_col_data_3 <- intersect(names(data), names(data3))
 
 data3 <- FormatCheckInHospitalTime(data3)
-data4 <- full_join(data, data3, by = c("登记号", "姓名", "性别" )) %>%
+data4 <- full_join(data, data3, by = c("姓名"), suffix = c("_data1", "_data2"))  # "登记号", "姓名", "性别" 
+
+data4 <- data4 %>%
+  mutate(
+    `登记号` = ifelse(
+      !is.na(`登记号_data1`),
+      `登记号_data1`,
+      `登记号_data2`
+    ),
+    `性别` = ifelse(
+      !is.na(`性别_data1`),
+      `性别_data1`,
+      `性别_data2`
+    )
+  ) %>%
+  select(-c("登记号_data1", "登记号_data2", "性别_data1", "性别_data2"))
+
+data4 <- FormatSex(data4)
+
+data4 <- data4 %>%
+  select(-c("Sex_Hb")) %>%
   select("ID", "登记号", "姓名", "性别", "入院时间", "年龄", "身高", "体重", "BMI", "BSA", everything())
 
-write.xlsx(data2, "./excel/数据内容_ARR.xlsx", sheet = 1)
+write.xlsx(data4, "./excel/数据内容_ARR.xlsx", sheet = 1)

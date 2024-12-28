@@ -96,7 +96,7 @@ FormatHeightAndWeight <- function(data, column="身高", column1="体重") {
     data$`身高` <- NA_integer_
   }
   if ("体重" %in% colnames(data)){
-    data$`体重` <- as.numeric(data[[column]])
+    data$`体重` <- as.numeric(data[[column1]])
   }else{
     data$`体重` <- NA_integer_
   }

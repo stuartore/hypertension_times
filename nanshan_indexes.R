@@ -7,10 +7,12 @@ BMI <- function(weight_kg, height_cm){
   return(BMI_value)
 }
 
+# His可能 ：BSA=0.0087×(W+H)−0.26(Breitmann, 1932)
+# DuBois & DuBois (1916) | 最广泛被接受
 BSA <- function(weight_kg, height_cm) {
   weight_kg <- as.numeric(weight_kg)
   height_cm <- as.numeric(height_cm)
-  BSA_value <- round(sqrt(height_cm * weight_kg / 3600), 3)
+  BSA_value <- 0.007184 * (weight_kg)^0.425 * (height_cm)^0.725
   return(BSA_value)
 }
 
